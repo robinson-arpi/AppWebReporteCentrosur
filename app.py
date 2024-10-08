@@ -8,64 +8,69 @@ import io
 # Variables globales
 sheet_names = []
 
-def fila_vacia(fila):
+# Estilos para el reporte
+bold_font_title = Font(size=14)  # Establece el tamaño de la fuente a 16
+bold_font = Font(bold=True)
+highlight = PatternFill("solid", fgColor="FFFF00")
+header_fill = PatternFill("solid", fgColor="dbf3d3")
+thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+
+def empty_row(fila):
     return fila.isnull().all()
 
-def leer_excel(input_file):
-    # Leer todas las hojas de un archivo Excel
-    df = pd.read_excel(input_file, sheet_name=None)  # Lee todas las hojas
-    filas_validas = []  # Lista para almacenar todas las filas válidas
+def read_excel(input_file):
+    try:
+        # Leer todas las hojas de un archivo Excel
+        df = pd.read_excel(input_file, sheet_name=None)  # Lee todas las hojas
+        valid_rows = []  # Lista para almacenar todas las filas válidas
 
-    # Iterar sobre las hojas
-    for sheet_name, data in df.items():
-        for index, fila in data.iterrows():
-            if fila_vacia(fila):
-                break
-            filas_validas.append(fila)
+        # Iterar sobre las hojas
+        for sheet_name, data in df.items():
+            for index, fila in data.iterrows():
+                if empty_row(fila):
+                    break
+                valid_rows.append(fila)
 
-    # Crear un DataFrame concatenado con todas las filas válidas
-    df_concatenado = pd.DataFrame(filas_validas)
+        # Crear un DataFrame concatenado con todas las filas válidas
+        valid_df = pd.DataFrame(valid_rows)
+        
+        # Obtenención y limpieza de los nombres de las hojas
+        sheet_names = list(df.keys())
+        valid_df.columns = valid_df.columns.str.strip().str.replace('\n', ' ', regex=True).str.replace('_',' ')
+
+        return valid_df, sheet_names
+    except Exception as e:
+        st.write("Revise el archvivo subido, asegúrese que contiene los cmapso solicitados" + e)
+
+        return None
     
-    # Obtener los nombres de las hojas
-    sheet_names = list(df.keys())
-    df_concatenado.columns = df_concatenado.columns.str.strip().str.replace('\n', ' ', regex=True)
-
-    return df_concatenado, sheet_names
-
-
 # Se presentó un problema respecto a la selección de sectores
-# En caso de haber probelam
-def verificar_sectores(df):
-    grupos = df.groupby(['CANTON', 'ZONA', 'NUMERO CLIENTES'])
-    correcciones = {}
-    filas_con_error = []
+# En caso de haber problema  se  reporta en la interfaz
+def check_sectors(df):
+    # Clave para verificar que los sectores sena correctos ['CANTON', 'ZONA', 'NUMERO CLIENTES']
+    groupings = df.groupby(['CANTON', 'ZONA', 'NUMERO CLIENTES'])
+    corrections = {}
+    rows_with_error = []
 
-    for (canton, zona, num_clientes), grupo in grupos:
+    for (canton, zona, num_clientes), grupo in groupings:
         sectores = grupo['SECTORES'].tolist()
         if len(set(sectores)) > 1:
             sector_mayor = max(sectores, key=len)
             nuevo_sector = sector_mayor
-            correcciones[(canton, zona, num_clientes)] = nuevo_sector
-            filas_con_error.extend(grupo.index.tolist())
+            corrections[(canton, zona, num_clientes)] = nuevo_sector
+            rows_with_error.extend(grupo.index.tolist())
 
-    for (canton, zona, num_clientes), nuevo_sector in correcciones.items():
+    for (canton, zona, num_clientes), nuevo_sector in corrections.items():
         df.loc[(df['CANTON'] == canton) & (df['ZONA'] == zona) & (df['NUMERO CLIENTES'] == num_clientes), 'SECTORES'] = nuevo_sector
 
     return df
 
-def combinar_horas(grupo):
-    horas_ordenadas = grupo[['HORA_INICIO', 'HORA_FINAL']].sort_values(by='HORA_INICIO')
-    return ' '.join([f"{row['HORA_INICIO']}-{row['HORA_FINAL']}" for index, row in horas_ordenadas.iterrows()])
+def combine_hours(group):
+    ordered_hours = group[['HORA INICIO', 'HORA FINAL']].sort_values(by='HORA INICIO')
+    return ' '.join([f"{row['HORA INICIO']}-{row['HORA FINAL']}" for index, row in ordered_hours.iterrows()])
 
 def create_worksheet(wb, df_agrupado, day):
     ws = wb.create_sheet(title=f"Dia {day.replace('/', '-')}")
-
-    # Creación de estilos
-    bold_font_title = Font(size=14)  # Establece el tamaño de la fuente a 16
-    bold_font = Font(bold=True)
-    highlight = PatternFill("solid", fgColor="FFFF00")
-    header_fill = PatternFill("solid", fgColor="dbf3d3")
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
 
     ws[f"A{2}"] = "FORMATO DE  DESCONEXIONES DIARIAS"
     ws[f"A{3}"] = "EMPRESA:"
@@ -179,9 +184,9 @@ logo_url = 'images/logo-centrosur.png'
 st.sidebar.image(logo_url)
 st.sidebar.header("Instrucciones")
 st.sidebar.write("""
-Por favor, suba un archivo Excel en formato crudo que contenga las siguientes cabeceras:
-- HORA_INICIO
-- HORA_FINAL
+Por favor, suba un archivo Excel sin ninguna edición, debería contar con al menos las siguientes cabeceras:
+- HORA INICIO
+- HORA FINAL
 - DIA
 - BLOQUE
 - SUBESTACIÓN
@@ -204,14 +209,18 @@ st.title("Reporte de cortes de energía Centrosur")
 
 uploaded_file = st.file_uploader("Elige un archivo Excel", type="xlsx")
 
+st.divider()
 if uploaded_file:
-    df, sheet_names = leer_excel(uploaded_file)
+    df, sheet_names = read_excel(uploaded_file)
     
-    st.write("Hojas encontradas:", sheet_names)
+    # Crear dos columnas
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("Hojas encontradas:", sheet_names)
 
-    df_seleccionado = df[['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA_INICIO', 'HORA_FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES', 'DIA', 'ZONA']]
+    df_seleccionado = df[['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA INICIO', 'HORA FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES', 'DIA', 'ZONA']]
     
-    df_seleccionado = verificar_sectores(df_seleccionado)
+    df_seleccionado = check_sectors(df_seleccionado)
 
     df_seleccionado.loc[:, 'DIA'] = pd.to_datetime(df_seleccionado['DIA'], format='%d/%m/%Y')
     # Procesar los datos por día
@@ -222,8 +231,8 @@ if uploaded_file:
 
     for day, df_agrupado in df_por_dia.items():
         df_agrupado = df_agrupado.groupby('SECTORES').agg({
-            'HORA_INICIO': lambda x: list(x),
-            'HORA_FINAL': lambda x: list(x),
+            'HORA INICIO': lambda x: list(x),
+            'HORA FINAL': lambda x: list(x),
             'SUBESTACIÓN': 'first',
             'CARGA EST MW': 'first',
             'PROVINCIA': 'first',
@@ -234,7 +243,7 @@ if uploaded_file:
             'ZONA': 'first'
         }).reset_index()
 
-        df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combinar_horas(pd.DataFrame({'HORA_INICIO': row['HORA_INICIO'], 'HORA_FINAL': row['HORA_FINAL']})), axis=1)
+        df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combine_hours(pd.DataFrame({'HORA INICIO': row['HORA INICIO'], 'HORA FINAL': row['HORA FINAL']})), axis=1)
         df_agrupado = df_agrupado.sort_values(by='PERIODO')
         df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR', 'CARGA EST MW', 'PROVINCIA', 'CANTON', 'SECTORES', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES']]
 
@@ -252,12 +261,13 @@ if uploaded_file:
     wb.save(output_file)
     output_file.seek(0)
 
-    st.write("Reporte generado con hojas por día.")
-    
-    # Botón de descarga
-    st.download_button(
-        label="Descargar archivo Excel",
-        data=output_file,
-        file_name='Formato MEM.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    with col2:
+        st.write("Reporte generado:")
+        
+        # Botón de descarga
+        st.download_button(
+            label="Descargar archivo Excel",
+            data=output_file,
+            file_name='Formato MEM.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
