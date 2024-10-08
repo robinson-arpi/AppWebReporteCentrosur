@@ -8,12 +8,30 @@ import io
 # Variables globales
 sheet_names = []
 
+
+
+def fila_vacia(fila):
+    return fila.isnull().all()
+
 def leer_excel(input_file):
     # Leer todas las hojas de un archivo Excel
     df = pd.read_excel(input_file, sheet_name=None)  # Lee todas las hojas
-    sheet_names = list(df.keys())  # Obtiene los nombres de las hojas
-    df = pd.concat(df.values(), ignore_index=True)  # Concatenar todos los DataFrames en uno solo
-    return df, sheet_names
+    filas_validas = []  # Lista para almacenar todas las filas válidas
+
+    # Iterar sobre las hojas
+    for sheet_name, data in df.items():
+        for index, fila in data.iterrows():
+            if fila_vacia(fila):
+                break
+            filas_validas.append(fila)
+
+    # Crear un DataFrame concatenado con todas las filas válidas
+    df_concatenado = pd.DataFrame(filas_validas)
+    
+    # Obtener los nombres de las hojas
+    sheet_names = list(df.keys())
+
+    return df_concatenado, sheet_names
 
 def verificar_sectores(df):
     grupos = df.groupby(['CANTON', 'ZONA', 'NUMERO CLIENTES'])
@@ -38,42 +56,8 @@ def combinar_horas(grupo):
     horas_ordenadas = grupo[['HORA_INICIO', 'HORA_FINAL']].sort_values(by='HORA_INICIO')
     return ' '.join([f"{row['HORA_INICIO']}-{row['HORA_FINAL']}" for index, row in horas_ordenadas.iterrows()])
 
-# Streamlit Interface
-st.title("Procesador de Archivos Excel")
-
-uploaded_file = st.file_uploader("Elige un archivo Excel", type="xlsx")
-
-if uploaded_file:
-    df, sheet_names = leer_excel(uploaded_file)
-    st.write("Nombres de las hojas:", sheet_names)
-    
-    df.columns = df.columns.str.strip().str.replace('\n', ' ', regex=True)
-
-    df_seleccionado = df[['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA_INICIO', 'HORA_FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES', 'ZONA']]
-    
-    df_seleccionado = verificar_sectores(df_seleccionado)
-
-    df_agrupado = df_seleccionado.groupby('SECTORES').agg({
-        'HORA_INICIO': lambda x: list(x),
-        'HORA_FINAL': lambda x: list(x),
-        'SUBESTACIÓN': 'first',
-        'CARGA EST MW': 'sum',
-        'PROVINCIA': 'first',
-        'CANTON': 'first',
-        'PRIMARIOS A DESCONECTAR': 'first',
-        'Prevalencia del Alimentador CTipo de Cliente)': 'first',
-        'NUMERO CLIENTES': 'sum',
-        'ZONA': 'first'
-    }).reset_index()
-
-    df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combinar_horas(pd.DataFrame({'HORA_INICIO': row['HORA_INICIO'], 'HORA_FINAL': row['HORA_FINAL']})), axis=1)
-    df_agrupado = df_agrupado.sort_values(by='PERIODO')
-    df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR', 'CARGA EST MW', 'PROVINCIA', 'CANTON', 'SECTORES', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES']]
-
-    # Crear un nuevo libro de trabajo y agregar una hoja
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Resultados Agrupados"
+def create_worksheet(wb, df_agrupado, day):
+    ws = wb.create_sheet(title=f"Dia {day.replace('/', '-')}")
 
     # Creación de estilos
     bold_font = Font(bold=True)
@@ -82,7 +66,7 @@ if uploaded_file:
     thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
 
     row = 1
-    contador = 1
+    contador =1
     df_periodos = df_agrupado.groupby('PERIODO')
 
     for periodo, datos in df_periodos:
@@ -95,7 +79,7 @@ if uploaded_file:
         ws[f"G{row}"] = "SECTORES"
         ws[f"H{row}"] = "Prevalencia del Alimentador CTipo de Cliente)"
         ws[f"I{row}"] = "NUMERO CLIENTES"
-
+    
         for col in range(1, 10):
             cell = ws.cell(row=row, column=col)
             cell.font = bold_font
@@ -138,18 +122,69 @@ if uploaded_file:
     for columna, ancho in ancho_columnas.items():
         ws.column_dimensions[columna].width = ancho
 
+
+def procesar_datos_por_dia(df):
+    # Convertir la columna DIA a datetime
+    df['DIA'] = pd.to_datetime(df['DIA'], format='%d/%m/%Y', errors='coerce')
+    # Agrupar por día con formato seguro para el nombre de la hoja
+    df_por_dia = {day.strftime('%Y-%m-%d'): datos for day, datos in df.groupby(df['DIA'])}
+    return df_por_dia
+
+# Streamlit Interface
+st.title("Reporte de cortes de energía Centrosur")
+
+uploaded_file = st.file_uploader("Elige un archivo Excel", type="xlsx")
+
+if uploaded_file:
+    df, sheet_names = leer_excel(uploaded_file)
+    st.write("Nombres de las hojas:", sheet_names)
+    
+    df.columns = df.columns.str.strip().str.replace('\n', ' ', regex=True)
+
+    df_seleccionado = df[['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA_INICIO', 'HORA_FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES', 'DIA', 'ZONA']]
+    
+    df_seleccionado = verificar_sectores(df_seleccionado)
+
+    df_seleccionado.loc[:, 'DIA'] = pd.to_datetime(df_seleccionado['DIA'], format='%d/%m/%Y')
+    # Procesar los datos por día
+    df_por_dia = procesar_datos_por_dia(df_seleccionado)
+
+    # Crear un nuevo libro de trabajo
+    wb = Workbook()
+
+    for day, df_agrupado in df_por_dia.items():
+        df_agrupado = df_agrupado.groupby('SECTORES').agg({
+            'HORA_INICIO': lambda x: list(x),
+            'HORA_FINAL': lambda x: list(x),
+            'SUBESTACIÓN': 'first',
+            'CARGA EST MW': 'first',
+            'PROVINCIA': 'first',
+            'CANTON': 'first',
+            'PRIMARIOS A DESCONECTAR': 'first',
+            'Prevalencia del Alimentador CTipo de Cliente)': 'first',
+            'NUMERO CLIENTES': 'sum',
+            'ZONA': 'first'
+        }).reset_index()
+
+        df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combinar_horas(pd.DataFrame({'HORA_INICIO': row['HORA_INICIO'], 'HORA_FINAL': row['HORA_FINAL']})), axis=1)
+        df_agrupado = df_agrupado.sort_values(by='PERIODO')
+        df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR', 'CARGA EST MW', 'PROVINCIA', 'CANTON', 'SECTORES', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES']]
+
+
+        # Crear una hoja por cada día
+        create_worksheet(wb, df_agrupado, day)
+
     # Guardar el archivo en un objeto BytesIO
     output_file = io.BytesIO()
     wb.save(output_file)
     output_file.seek(0)
 
-    st.write("DataFrame Ordenado por Períodos de Tiempo:")
-    st.dataframe(df_agrupado)
-
+    st.write("Reporte generado con hojas por día.")
+    
     # Botón de descarga
     st.download_button(
         label="Descargar archivo Excel",
         data=output_file,
-        file_name='data_horas_agrupadas_ordenadas_periodos.xlsx',
+        file_name='data_horas_agrupadas_por_dia.xlsx',
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
