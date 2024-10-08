@@ -43,7 +43,6 @@ def verificar_sectores(df):
     for (canton, zona, num_clientes), grupo in grupos:
         sectores = grupo['SECTORES'].tolist()
         if len(set(sectores)) > 1:
-            sector_menor = min(sectores, key=len)
             sector_mayor = max(sectores, key=len)
             nuevo_sector = sector_mayor
             correcciones[(canton, zona, num_clientes)] = nuevo_sector
@@ -62,7 +61,7 @@ def create_worksheet(wb, df_agrupado, day):
     ws = wb.create_sheet(title=f"Dia {day.replace('/', '-')}")
 
     # Creación de estilos
-    bold_font_title = Font(bold=True, size=16)  # Establece el tamaño de la fuente a 16
+    bold_font_title = Font(size=14)  # Establece el tamaño de la fuente a 16
     bold_font = Font(bold=True)
     highlight = PatternFill("solid", fgColor="FFFF00")
     header_fill = PatternFill("solid", fgColor="dbf3d3")
@@ -74,7 +73,7 @@ def create_worksheet(wb, df_agrupado, day):
     ws[f"A{4}"] = "FECHA:"
     ws[f"B{4}"] = day.replace('/', '-')
 
-
+    ws[f"A{2}"].font = bold_font_title
     ws[f"A{3}"].font = bold_font_title
     ws[f"A{4}"].font = bold_font_title
     ws[f"B{3}"].font = bold_font_title
@@ -133,13 +132,20 @@ def create_worksheet(wb, df_agrupado, day):
         merged_cell = ws[f"A{merge_start}"]
         merged_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
+
+        # Usar la fórmula de Excel para sumar el rango
+        ws[f"C{merge_end + 1}"] = "TOTAL:"
+
+        ws[f"D{merge_end + 1}"] = f"=SUM(D{merge_start}:D{merge_end})"  # Escribir la fórmula en D18
+
+
     for r in range(2, row):
         ws.cell(row=r, column=4).number_format = '0.00'
 
 
     ancho_columnas = {
-        'A': 25,
-        'B': 15,
+        'A': 20,
+        'B': 16,
         'C': 25,
         'D': 15,
         'E': 15,
@@ -162,7 +168,36 @@ def procesar_datos_por_dia(df):
 
 
 # Info page
-st.set_page_config(page_title="Reporte", page_icon='images/icono-centrosur.ico', layout="centered", initial_sidebar_state="auto", menu_items=None)
+st.set_page_config(
+    page_title="Reporte",
+    page_icon='images/icono-centrosur.ico',
+    layout="centered",
+    initial_sidebar_state="expanded",  # Para que la barra lateral esté siempre expandida
+)
+# Sidebar para instrucciones
+logo_url = 'images/logo-centrosur.png'
+st.sidebar.image(logo_url)
+st.sidebar.header("Instrucciones")
+st.sidebar.write("""
+Por favor, suba un archivo Excel en formato crudo que contenga las siguientes cabeceras:
+- HORA_INICIO
+- HORA_FINAL
+- DIA
+- BLOQUE
+- SUBESTACIÓN
+- PRIMARIOS A DESCONECTAR
+- EQUIPO ABRIR
+- EQUIPO TRANSF
+- CARGA EST MW
+- PROVINCIA
+- CANTON
+- ZONA
+- SECTORES
+- Prevalencia del Alimentador CTipo de Cliente)
+- NUMERO CLIENTES
+
+El programa procesará los datos, separará por días y generará un reporte para descargar.
+""")
 
 # Streamlit Interface
 st.title("Reporte de cortes de energía Centrosur")
@@ -172,7 +207,7 @@ uploaded_file = st.file_uploader("Elige un archivo Excel", type="xlsx")
 if uploaded_file:
     df, sheet_names = leer_excel(uploaded_file)
     
-    st.write("Nombres de las hojas:", sheet_names)
+    st.write("Hojas encontradas:", sheet_names)
 
     df_seleccionado = df[['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA_INICIO', 'HORA_FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES', 'DIA', 'ZONA']]
     
@@ -223,6 +258,6 @@ if uploaded_file:
     st.download_button(
         label="Descargar archivo Excel",
         data=output_file,
-        file_name='data_horas_agrupadas_por_dia.xlsx',
+        file_name='Formato MEM.xlsx',
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
