@@ -133,7 +133,7 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
         ws[f"{get_column_letter(start_column + 1)}{row}"] = "SUBESTACIÓN"
         ws[f"{get_column_letter(start_column + 2)}{row}"] = "PRIMARIOS A DESCONECTAR"
         ws[f"{get_column_letter(start_column + 3)}{row}"] = '# CLIENTES'
-        ws[f"{get_column_letter(start_column + 6)}{row}"] = 'DEMANDA PROMEDIO'
+        ws[f"{get_column_letter(start_column + 6)}{row}"] = 'DEMANDA PROMEDIO DE LOS PERIODOS (MWh)'
         ws[f"{get_column_letter(start_column + 9)}{row}"] = "PROVINCIA"
         ws[f"{get_column_letter(start_column + 10)}{row}"] = "CANTON"
         ws[f"{get_column_letter(start_column + 11)}{row}"] = "SECTORES"
@@ -244,7 +244,15 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
 
     # Aplicar formato a los números en la columna de carga estimada
     for r in range(2, row):
-        ws.cell(row=r, column=start_column + 3).number_format = '0.00'
+        ws.cell(row=r, column=start_column + 3).number_format = '0'
+        ws.cell(row=r, column=start_column + 4).number_format = '0'
+        ws.cell(row=r, column=start_column + 5).number_format = '0'
+        ws.cell(row=r, column=start_column + 6).number_format = '0.00'
+        ws.cell(row=r, column=start_column + 7).number_format = '0.00'
+        ws.cell(row=r, column=start_column + 8).number_format = '0.00'
+
+
+
 
     # Ajustar ancho de las columnas dinámicamente a partir de start_column
     ancho_columnas = {
@@ -254,9 +262,14 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
         3: 15,  # Columna D (15)
         4: 15,  # Columna E (15)
         5: 15,  # Columna F (15)
-        6: 20,  # Columna G (20)
+        6: 15,  # Columna G (20)
         7: 15,  # Columna H (15)
-        8: 15   # Columna I (15)
+        8: 15,   # Columna I (15)
+        9: 15,   # Columna J (15)
+        10: 15,   # Columna K (15)
+        11: 40,   # Columna L (15)
+
+
     }
 
     for idx, ancho in ancho_columnas.items():
