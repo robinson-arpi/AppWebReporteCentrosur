@@ -113,11 +113,16 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
     ws[f"{start_col_letter}2"].border = thin_border
     ws[f"{start_col_letter}3"].border = thin_border
     ws[f"{start_col_letter}4"].border = thin_border
+    ws[f"{get_column_letter(start_column+2)}2"].border = thin_border
     ws[f"{get_column_letter(start_column + 1)}3"].border = thin_border
+    ws[f"{get_column_letter(start_column + 2)}3"].border = thin_border
     ws[f"{get_column_letter(start_column + 1)}4"].border = thin_border
-
+    ws[f"{get_column_letter(start_column + 2)}4"].border = thin_border
+    
     ws[f"{get_column_letter(start_column + 1)}3"].fill = header_fill
     ws[f"{get_column_letter(start_column + 1)}4"].fill = header_fill
+    
+
 
     row = 6
     contador = 1
@@ -155,7 +160,6 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
                 cell.fill = header_fill
                 cell.border = thin_border
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        ws.row_dimensions[row].height = 30
 
         ws.merge_cells(f"{start_col_letter}{row}:{start_col_letter}{row+1}")
         ws.merge_cells(f"{get_column_letter(start_column + 1)}{row}:{get_column_letter(start_column + 1)}{row+1}")
@@ -241,16 +245,52 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
         
         ws.merge_cells(f"{get_column_letter(start_column + 9)}{merge_end + 1}:{get_column_letter(start_column + 11)}{merge_end + 2}")
 
+        #Formato
+        ws[f"{get_column_letter(start_column + 1)}{merge_end + 1}"].font = bold_font
+        ws[f"{get_column_letter(start_column + 1)}{merge_end + 2}"].font = bold_font
+        
+        for r in range(merge_start, merge_end+3):
+            ws.cell(row=r, column=start_column + 3).number_format = '0.0'
+            ws.cell(row=r, column=start_column + 4).number_format = '0.0'
+            ws.cell(row=r, column=start_column + 5).number_format = '0.0'
+            ws.cell(row=r, column=start_column + 6).number_format = '0.00'
+            ws.cell(row=r, column=start_column + 7).number_format = '0.00'
+            ws.cell(row=r, column=start_column + 8).number_format = '0.00'
+            ws.cell(row=r, column=start_column + 11).alignment = Alignment(vertical='center', wrap_text=True)
+            # Alinear todas las columnas a la izquierda
+            ws.cell(row=r, column=start_column + 1).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 3).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 4).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 5).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 6).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 7).alignment = Alignment(horizontal='left',vertical='top')
+            ws.cell(row=r, column=start_column + 8).alignment = Alignment(horizontal='left',vertical='top')
+
+            ws.cell(row=r, column=start_column + 2).alignment = Alignment(vertical='top')
+            ws.cell(row=r, column=start_column + 9).alignment = Alignment(vertical='top')
+            ws.cell(row=r, column=start_column + 10).alignment = Alignment(vertical='top')
+
+
+
+
 
     # Aplicar formato a los números en la columna de carga estimada
-    for r in range(2, row):
-        ws.cell(row=r, column=start_column + 3).number_format = '0'
-        ws.cell(row=r, column=start_column + 4).number_format = '0'
-        ws.cell(row=r, column=start_column + 5).number_format = '0'
-        ws.cell(row=r, column=start_column + 6).number_format = '0.00'
-        ws.cell(row=r, column=start_column + 7).number_format = '0.00'
-        ws.cell(row=r, column=start_column + 8).number_format = '0.00'
-
+    # for r in range(2, row):
+    #     ws.cell(row=r, column=start_column + 3).number_format = '0.0'
+    #     ws.cell(row=r, column=start_column + 4).number_format = '0.0'
+    #     ws.cell(row=r, column=start_column + 5).number_format = '0.0'
+    #     ws.cell(row=r, column=start_column + 6).number_format = '0.00'
+    #     ws.cell(row=r, column=start_column + 7).number_format = '0.00'
+    #     ws.cell(row=r, column=start_column + 8).number_format = '0.00'
+    #     ws.cell(row=r, column=start_column + 11).alignment = Alignment(vertical='center', wrap_text=True)
+    #     # Alinear todas las columnas a la izquierda
+    #     ws.cell(row=r, column=start_column + 1).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 3).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 4).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 5).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 6).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 7).alignment = Alignment(horizontal='left')
+    #     ws.cell(row=r, column=start_column + 8).alignment = Alignment(horizontal='left')
 
 
 
@@ -267,7 +307,7 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
         8: 15,   # Columna I (15)
         9: 15,   # Columna J (15)
         10: 15,   # Columna K (15)
-        11: 40,   # Columna L (15)
+        11: 180,   # Columna L (15)
 
 
     }
