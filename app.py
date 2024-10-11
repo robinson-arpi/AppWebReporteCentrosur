@@ -4,6 +4,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 import streamlit as st
 import io
+from datetime import datetime, timedelta
+
 
 # Variables globales para almacenar nombres de las hojas del archivo Excel
 sheet_names = []
@@ -123,18 +125,22 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
     # Iterar sobre los periodos agrupados
     for periodo, datos in df_periodos:
         # Ajustar las posiciones de acuerdo a start_column
-        ws[f"{start_col_letter}{row}"] = f"PERIODO {contador}"
+        ws[f"{start_col_letter}{row}"] = f"BLOQUE {contador}"
         ws[f"{get_column_letter(start_column + 1)}{row}"] = "SUBESTACIÓN"
         ws[f"{get_column_letter(start_column + 2)}{row}"] = "PRIMARIOS A DESCONECTAR"
-        ws[f"{get_column_letter(start_column + 3)}{row}"] = "CARGA EST MW"
-        ws[f"{get_column_letter(start_column + 4)}{row}"] = "PROVINCIA"
-        ws[f"{get_column_letter(start_column + 5)}{row}"] = "CANTON"
-        ws[f"{get_column_letter(start_column + 6)}{row}"] = "SECTORES"
-        ws[f"{get_column_letter(start_column + 7)}{row}"] = "Prevalencia del Alimentador CTipo de Cliente)"
-        ws[f"{get_column_letter(start_column + 8)}{row}"] = "NUMERO CLIENTES"
+        ws[f"{get_column_letter(start_column + 3)}{row}"] = 'CLIENTES RESIDENCIALES'
+        ws[f"{get_column_letter(start_column + 4)}{row}"] = 'CLIENTES INDUSTRIALES'
+        ws[f"{get_column_letter(start_column + 5)}{row}"] = 'CLIENTES COMERCIALES'
+        ws[f"{get_column_letter(start_column + 6)}{row}"] = 'Aporte Residencial'
+        ws[f"{get_column_letter(start_column + 7)}{row}"] = 'Aporte Industrial'
+        ws[f"{get_column_letter(start_column + 8)}{row}"] = 'Aporte Comercial'
+        ws[f"{get_column_letter(start_column + 9)}{row}"] = "PROVINCIA"
+        ws[f"{get_column_letter(start_column + 10)}{row}"] = "CANTON"
+        ws[f"{get_column_letter(start_column + 11)}{row}"] = "SECTORES"
+
 
         # Aplicar formato a las celdas del encabezado
-        for col in range(start_column, start_column + 9):
+        for col in range(start_column, start_column + 12):
             cell = ws.cell(row=row, column=col)
             cell.font = bold_font
             cell.fill = header_fill
@@ -145,6 +151,8 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
 
         if isinstance(datos, pd.Series):
             datos = datos.to_frame().T
+
+
 
         merge_start = row + 1
         for _, fila in datos.iterrows():
@@ -160,16 +168,41 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
                 cell.border = thin_border
 
         contador += 1
-        row += 3
+        row += 4
         ws.merge_cells(f'{start_col_letter}{merge_start}:{start_col_letter}{merge_end}')
 
         # Centrar el contenido después del merge
         merged_cell = ws[f"{start_col_letter}{merge_start}"]
         merged_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
+
+        horas = calcular_horas(datos["PERIODO"].iloc[0])
+
         # Usar la fórmula de Excel para sumar el rango
-        ws[f"{get_column_letter(start_column + 2)}{merge_end + 1}"] = "TOTAL:"
+        ws[f"{get_column_letter(start_column + 1)}{merge_end + 1}"] = "TOTALES PARCIALES:"
+        ws[f"{get_column_letter(start_column + 1)}{merge_end + 2}"] = "TOTAL:"
+
+        
         ws[f"{get_column_letter(start_column + 3)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 3)}{merge_start}:{get_column_letter(start_column + 3)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 4)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 4)}{merge_start}:{get_column_letter(start_column + 4)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 5)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 5)}{merge_start}:{get_column_letter(start_column + 5)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 6)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 6)}{merge_start}:{get_column_letter(start_column + 6)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 7)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 7)}{merge_start}:{get_column_letter(start_column + 7)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 8)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 8)}{merge_start}:{get_column_letter(start_column + 8)}{merge_end})"
+
+        # Sumar las tres primeras columnas (start_column + 3, start_column + 4, start_column + 5) usando SUM
+        ws[f"{get_column_letter(start_column + 3)}{merge_end + 2}"] = (
+            f"=SUM({get_column_letter(start_column + 3)}{merge_end + 1}, "
+            f"{get_column_letter(start_column + 4)}{merge_end + 1}, "
+            f"{get_column_letter(start_column + 5)}{merge_end + 1})"
+        )
+
+        # Sumar las siguientes tres columnas (start_column + 6, start_column + 7, start_column + 8) usando SUM
+        ws[f"{get_column_letter(start_column + 6)}{merge_end + 2}"] = (
+            f"=SUM({get_column_letter(start_column + 6)}{merge_end + 1}, "
+            f"{get_column_letter(start_column + 7)}{merge_end + 1}, "
+            f"{get_column_letter(start_column + 8)}{merge_end + 1})"
+        )
 
     # Aplicar formato a los números en la columna de carga estimada
     for r in range(2, row):
@@ -199,6 +232,26 @@ def procesar_datos_por_dia(df):
     df_por_dia = {day.strftime('%Y-%m-%d'): datos for day, datos in df.groupby(df['DIA'])}
     return df_por_dia
 
+
+def calcular_horas(periodos):
+    total_horas = 0
+    periodos = periodos.split()  # Divide los diferentes bloques de tiempo
+
+    for periodo in periodos:
+        inicio, fin = periodo.split('-')  # Separa las horas de inicio y fin
+        fmt = '%H:%M:%S'  # Formato de las horas
+        t_inicio = datetime.strptime(inicio, fmt)
+        t_fin = datetime.strptime(fin, fmt)
+
+        # Si la hora de fin es menor que la de inicio, sumamos 1 día (24 horas)
+        if t_fin < t_inicio:
+            t_fin += timedelta(days=1)
+
+        # Calcula la diferencia en horas y añade al total
+        horas = (t_fin - t_inicio).total_seconds() / 3600
+        total_horas += horas
+
+    return total_horas
 
 # Info page
 st.set_page_config(
@@ -251,7 +304,7 @@ if uploaded_file:
         required_columns = ['SECTORES', 'SUBESTACIÓN', 'CARGA EST MW', 'HORA INICIO', 
                             'HORA FINAL', 'PROVINCIA', 'PRIMARIOS A DESCONECTAR', 
                             'CANTON', 'Prevalencia del Alimentador CTipo de Cliente)', 
-                            'NUMERO CLIENTES', 'DIA', 'ZONA']
+                            'NUMERO CLIENTES', 'DIA', 'ZONA', 'CLIENTES RESIDENCIALES','Aporte Residencial','CLIENTES COMERCIALES' ,'Aporte Comercial','CLIENTES INDUSTRIALES', 'Aporte Industrial']
 
         # Verificar si las columnas requeridas están en el DataFrame
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -281,12 +334,20 @@ if uploaded_file:
                 'PRIMARIOS A DESCONECTAR': 'first',
                 'Prevalencia del Alimentador CTipo de Cliente)': 'first',
                 'NUMERO CLIENTES': 'sum',
-                'ZONA': 'first'
+                'ZONA': 'first',
+                'NUMERO CLIENTES': 'first',
+                'CLIENTES RESIDENCIALES':'first',
+                'CLIENTES INDUSTRIALES': 'first',
+                'CLIENTES COMERCIALES': 'first',
+                'Aporte Residencial': 'mean',
+                'Aporte Industrial': 'mean',
+                'Aporte Comercial': 'mean'
+
             }).reset_index()
 
             df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combine_hours(pd.DataFrame({'HORA INICIO': row['HORA INICIO'], 'HORA FINAL': row['HORA FINAL']})), axis=1)
             df_agrupado = df_agrupado.sort_values(by='PERIODO')
-            df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR', 'CARGA EST MW', 'PROVINCIA', 'CANTON', 'SECTORES', 'Prevalencia del Alimentador CTipo de Cliente)', 'NUMERO CLIENTES']]
+            df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR','CLIENTES RESIDENCIALES','CLIENTES INDUSTRIALES','CLIENTES COMERCIALES','Aporte Residencial',  'Aporte Industrial','Aporte Comercial', 'PROVINCIA', 'CANTON', 'SECTORES']]
 
             # Crear una hoja por cada día
             create_worksheet(wb, df_agrupado, day)
