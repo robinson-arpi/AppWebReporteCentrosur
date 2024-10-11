@@ -84,6 +84,7 @@ def combine_hours(group):
     except Exception as e:
         st.write("Error en combine_hours:" + str(e))
         return None
+    
 
 
 def create_worksheet(wb, df_agrupado, day, start_column=3):
@@ -125,74 +126,100 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
     # Iterar sobre los periodos agrupados
     for periodo, datos in df_periodos:
         # Ajustar las posiciones de acuerdo a start_column
+        horas = calcular_horas(datos["PERIODO"].iloc[0])
+
+
         ws[f"{start_col_letter}{row}"] = f"BLOQUE {contador}"
         ws[f"{get_column_letter(start_column + 1)}{row}"] = "SUBESTACIÓN"
         ws[f"{get_column_letter(start_column + 2)}{row}"] = "PRIMARIOS A DESCONECTAR"
-        ws[f"{get_column_letter(start_column + 3)}{row}"] = 'CLIENTES RESIDENCIALES'
-        ws[f"{get_column_letter(start_column + 4)}{row}"] = 'CLIENTES INDUSTRIALES'
-        ws[f"{get_column_letter(start_column + 5)}{row}"] = 'CLIENTES COMERCIALES'
-        ws[f"{get_column_letter(start_column + 6)}{row}"] = 'Aporte Residencial'
-        ws[f"{get_column_letter(start_column + 7)}{row}"] = 'Aporte Industrial'
-        ws[f"{get_column_letter(start_column + 8)}{row}"] = 'Aporte Comercial'
+        ws[f"{get_column_letter(start_column + 3)}{row}"] = '# CLIENTES'
+        ws[f"{get_column_letter(start_column + 6)}{row}"] = 'DEMANDA PROMEDIO'
         ws[f"{get_column_letter(start_column + 9)}{row}"] = "PROVINCIA"
         ws[f"{get_column_letter(start_column + 10)}{row}"] = "CANTON"
         ws[f"{get_column_letter(start_column + 11)}{row}"] = "SECTORES"
 
 
-        # Aplicar formato a las celdas del encabezado
-        for col in range(start_column, start_column + 12):
-            cell = ws.cell(row=row, column=col)
-            cell.font = bold_font
-            cell.fill = header_fill
-            cell.border = thin_border
-            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws[f"{get_column_letter(start_column + 3)}{row+1}"] = 'RESIDENCIAL'
+        ws[f"{get_column_letter(start_column + 4)}{row+1}"] = 'INDUSTRIAL'
+        ws[f"{get_column_letter(start_column + 5)}{row+1}"] = 'COMERCIAL'
+        ws[f"{get_column_letter(start_column + 6)}{row+1}"] = 'RESIDENCIAL'
+        ws[f"{get_column_letter(start_column + 7)}{row+1}"] = 'INDUSTRIAL'
+        ws[f"{get_column_letter(start_column + 8)}{row+1}"] = 'COMERCIAL'
 
+        # Aplicar formato a las celdas del encabezado
+# Aplicar estilos a la fila actual y la siguiente fila en un solo bucle
+        for col in range(start_column, start_column + 12):
+            for r in range(row, row + 2):  # Aplica los estilos a la fila actual (row) y la siguiente (row + 1)
+                cell = ws.cell(row=r, column=col)
+                cell.font = bold_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         ws.row_dimensions[row].height = 30
+
+        ws.merge_cells(f"{start_col_letter}{row}:{start_col_letter}{row+1}")
+        ws.merge_cells(f"{get_column_letter(start_column + 1)}{row}:{get_column_letter(start_column + 1)}{row+1}")
+        ws.merge_cells(f"{get_column_letter(start_column + 2)}{row}:{get_column_letter(start_column + 2)}{row+1}")        
+        ws.merge_cells(f"{get_column_letter(start_column + 9)}{row}:{get_column_letter(start_column + 9)}{row+1}")        
+        ws.merge_cells(f"{get_column_letter(start_column + 10)}{row}:{get_column_letter(start_column + 10)}{row+1}")        
+        ws.merge_cells(f"{get_column_letter(start_column + 11)}{row}:{get_column_letter(start_column + 11)}{row+1}")        
+
+        ws.merge_cells(f"{get_column_letter(start_column + 3)}{row}:{get_column_letter(start_column + 5)}{row}")        
+        ws.merge_cells(f"{get_column_letter(start_column + 6)}{row}:{get_column_letter(start_column + 8)}{row}")        
+
+        row +=1
 
         if isinstance(datos, pd.Series):
             datos = datos.to_frame().T
-
-
-
         merge_start = row + 1
         for _, fila in datos.iterrows():
             # Insertar fila a partir de start_column
             ws.append([None] * (start_column - 1) + list(fila))
+            # Recuperar la fila actual donde estamos añadiendo datos
+            current_row = ws.max_row
+            # Recuperar el valor actual en la columna start_column + 6
+            current_value = ws[f"{get_column_letter(start_column + 6)}{current_row}"].value
+            ws[f"{get_column_letter(start_column + 6)}{current_row}"] = f"={current_value}*{horas}"
+            current_value = ws[f"{get_column_letter(start_column + 7)}{current_row}"].value
+            ws[f"{get_column_letter(start_column + 7)}{current_row}"] = f"={current_value}*{horas}"
+            current_value = ws[f"{get_column_letter(start_column + 8)}{current_row}"].value
+            ws[f"{get_column_letter(start_column + 8)}{current_row}"] = f"={current_value}*{horas}"
+
             row += 1
         merge_end = row
 
         # Aplicar borde a las celdas del rango de datos
-        for r in range(row - len(datos), row + 1):
+        for r in range(row - len(datos), row + 3):
             for c in range(start_column, start_column + len(fila)):
                 cell = ws.cell(row=r, column=c)
                 cell.border = thin_border
 
         contador += 1
         row += 4
-        ws.merge_cells(f'{start_col_letter}{merge_start}:{start_col_letter}{merge_end}')
+        #MErge periodos
+        ws.merge_cells(f'{start_col_letter}{merge_start}:{start_col_letter}{merge_end+2}')
 
         # Centrar el contenido después del merge
         merged_cell = ws[f"{start_col_letter}{merge_start}"]
         merged_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
 
-        horas = calcular_horas(datos["PERIODO"].iloc[0])
 
         # Usar la fórmula de Excel para sumar el rango
         ws[f"{get_column_letter(start_column + 1)}{merge_end + 1}"] = "TOTALES PARCIALES:"
         ws[f"{get_column_letter(start_column + 1)}{merge_end + 2}"] = "TOTAL:"
 
         
-        ws[f"{get_column_letter(start_column + 3)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 3)}{merge_start}:{get_column_letter(start_column + 3)}{merge_end})*{horas}"
-        ws[f"{get_column_letter(start_column + 4)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 4)}{merge_start}:{get_column_letter(start_column + 4)}{merge_end})*{horas}"
-        ws[f"{get_column_letter(start_column + 5)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 5)}{merge_start}:{get_column_letter(start_column + 5)}{merge_end})*{horas}"
-        ws[f"{get_column_letter(start_column + 6)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 6)}{merge_start}:{get_column_letter(start_column + 6)}{merge_end})*{horas}"
-        ws[f"{get_column_letter(start_column + 7)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 7)}{merge_start}:{get_column_letter(start_column + 7)}{merge_end})*{horas}"
-        ws[f"{get_column_letter(start_column + 8)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 8)}{merge_start}:{get_column_letter(start_column + 8)}{merge_end})*{horas}"
+        ws[f"{get_column_letter(start_column + 3)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 3)}{merge_start}:{get_column_letter(start_column + 3)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 4)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 4)}{merge_start}:{get_column_letter(start_column + 4)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 5)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 5)}{merge_start}:{get_column_letter(start_column + 5)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 6)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 6)}{merge_start}:{get_column_letter(start_column + 6)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 7)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 7)}{merge_start}:{get_column_letter(start_column + 7)}{merge_end})"
+        ws[f"{get_column_letter(start_column + 8)}{merge_end + 1}"] = f"=SUM({get_column_letter(start_column + 8)}{merge_start}:{get_column_letter(start_column + 8)}{merge_end})"
 
         # Sumar las tres primeras columnas (start_column + 3, start_column + 4, start_column + 5) usando SUM
         ws[f"{get_column_letter(start_column + 3)}{merge_end + 2}"] = (
-            f"=SUM({get_column_letter(start_column + 3)}{merge_end + 1}, "
+            f"=SUM({get_column_letter(start_column + 3)}{merge_end + 1}, " 
             f"{get_column_letter(start_column + 4)}{merge_end + 1}, "
             f"{get_column_letter(start_column + 5)}{merge_end + 1})"
         )
@@ -203,6 +230,17 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
             f"{get_column_letter(start_column + 7)}{merge_end + 1}, "
             f"{get_column_letter(start_column + 8)}{merge_end + 1})"
         )
+
+
+        #Merges para calculos
+        ws.merge_cells(f"{get_column_letter(start_column + 1)}{merge_end + 1}:{get_column_letter(start_column + 2)}{merge_end + 1}")
+        ws.merge_cells(f"{get_column_letter(start_column + 1)}{merge_end + 2}:{get_column_letter(start_column + 2)}{merge_end + 2}")
+
+        ws.merge_cells(f"{get_column_letter(start_column + 3)}{merge_end + 2}:{get_column_letter(start_column + 5)}{merge_end + 2}")
+        ws.merge_cells(f"{get_column_letter(start_column + 6)}{merge_end + 2}:{get_column_letter(start_column + 8)}{merge_end + 2}")
+        
+        ws.merge_cells(f"{get_column_letter(start_column + 9)}{merge_end + 1}:{get_column_letter(start_column + 11)}{merge_end + 2}")
+
 
     # Aplicar formato a los números en la columna de carga estimada
     for r in range(2, row):
