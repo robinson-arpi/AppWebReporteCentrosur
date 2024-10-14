@@ -177,17 +177,19 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
             datos = datos.to_frame().T
         merge_start = row + 1
         for _, fila in datos.iterrows():
+#            st.write(datos["CARGA EST MW"].iloc[0])
+            carga_est = float(datos["CARGA EST MW"].iloc[0])
             # Insertar fila a partir de start_column
             ws.append([None] * (start_column - 1) + list(fila))
             # Recuperar la fila actual donde estamos añadiendo datos
             current_row = ws.max_row
             # Recuperar el valor actual en la columna start_column + 6
             current_value = ws[f"{get_column_letter(start_column + 6)}{current_row}"].value
-            ws[f"{get_column_letter(start_column + 6)}{current_row}"] = f"={current_value}*{horas}"
+            ws[f"{get_column_letter(start_column + 6)}{current_row}"] = f"={current_value}*{horas}*{carga_est}"
             current_value = ws[f"{get_column_letter(start_column + 7)}{current_row}"].value
-            ws[f"{get_column_letter(start_column + 7)}{current_row}"] = f"={current_value}*{horas}"
+            ws[f"{get_column_letter(start_column + 7)}{current_row}"] = f"={current_value}*{horas}*{carga_est}"
             current_value = ws[f"{get_column_letter(start_column + 8)}{current_row}"].value
-            ws[f"{get_column_letter(start_column + 8)}{current_row}"] = f"={current_value}*{horas}"
+            ws[f"{get_column_letter(start_column + 8)}{current_row}"] = f"={current_value}*{horas}*{carga_est}"
 
             row += 1
         merge_end = row
@@ -415,14 +417,14 @@ if uploaded_file:
         wb = Workbook()
 
         for day, df_agrupado in df_por_dia.items():
-            df_agrupado = df_agrupado.groupby('SECTORES').agg({
+            df_agrupado = df_agrupado.groupby('PRIMARIOS A DESCONECTAR').agg({
                 'HORA INICIO': lambda x: list(x),
                 'HORA FINAL': lambda x: list(x),
                 'SUBESTACIÓN': 'first',
                 'CARGA EST MW': 'first',
                 'PROVINCIA': 'first',
                 'CANTON': 'first',
-                'PRIMARIOS A DESCONECTAR': 'first',
+                'SECTORES': 'first',
                 'Prevalencia del Alimentador CTipo de Cliente)': 'first',
                 'NUMERO CLIENTES': 'sum',
                 'ZONA': 'first',
@@ -438,7 +440,7 @@ if uploaded_file:
 
             df_agrupado['PERIODO'] = df_agrupado.apply(lambda row: combine_hours(pd.DataFrame({'HORA INICIO': row['HORA INICIO'], 'HORA FINAL': row['HORA FINAL']})), axis=1)
             df_agrupado = df_agrupado.sort_values(by='PERIODO')
-            df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR','CLIENTES RESIDENCIALES','CLIENTES INDUSTRIALES','CLIENTES COMERCIALES','Aporte Residencial',  'Aporte Industrial','Aporte Comercial', 'PROVINCIA', 'CANTON', 'SECTORES']]
+            df_agrupado = df_agrupado[['PERIODO', 'SUBESTACIÓN', 'PRIMARIOS A DESCONECTAR','CLIENTES RESIDENCIALES','CLIENTES INDUSTRIALES','CLIENTES COMERCIALES','Aporte Residencial',  'Aporte Industrial','Aporte Comercial', 'PROVINCIA', 'CANTON', 'SECTORES', 'CARGA EST MW']]
 
             # Crear una hoja por cada día
             create_worksheet(wb, df_agrupado, day)
