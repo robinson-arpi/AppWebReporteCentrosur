@@ -132,8 +132,6 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
     for periodo, datos in df_periodos:
         # Ajustar las posiciones de acuerdo a start_column
         horas = calcular_horas(datos["PERIODO"].iloc[0])
-
-
         ws[f"{start_col_letter}{row}"] = f"BLOQUE {contador}"
         ws[f"{get_column_letter(start_column + 1)}{row}"] = "SUBESTACIÓN"
         ws[f"{get_column_letter(start_column + 2)}{row}"] = "PRIMARIOS A DESCONECTAR"
@@ -177,8 +175,7 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
             datos = datos.to_frame().T
         merge_start = row + 1
         for _, fila in datos.iterrows():
-#            st.write(datos["CARGA EST MW"].iloc[0])
-            carga_est = float(datos["CARGA EST MW"].iloc[0])
+            carga_est = float(fila["CARGA EST MW"])
             # Insertar fila a partir de start_column
             ws.append([None] * (start_column - 1) + list(fila))
             # Recuperar la fila actual donde estamos añadiendo datos
