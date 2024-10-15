@@ -177,7 +177,7 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
         for _, fila in datos.iterrows():
             carga_est = float(fila["CARGA EST MW"])
             # Insertar fila a partir de start_column
-            ws.append([None] * (start_column - 1) + list(fila))
+            ws.append([None] * (start_column - 1) + list(fila[:-1]))
             # Recuperar la fila actual donde estamos añadiendo datos
             current_row = ws.max_row
             # Recuperar el valor actual en la columna start_column + 6
@@ -193,7 +193,7 @@ def create_worksheet(wb, df_agrupado, day, start_column=3):
 
         # Aplicar borde a las celdas del rango de datos
         for r in range(row - len(datos), row + 3):
-            for c in range(start_column, start_column + len(fila)):
+            for c in range(start_column, start_column + len(fila[:-1])):
                 cell = ws.cell(row=r, column=c)
                 cell.border = thin_border
 
