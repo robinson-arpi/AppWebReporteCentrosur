@@ -1,7 +1,7 @@
 import streamlit as st
-import views.database_chargue as database
-import views.report_generation as report
-import views.user_guide as guide
+import views.database_chargue_view as database
+import views.report_generation_view as report
+import views.update_view as guide
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 
