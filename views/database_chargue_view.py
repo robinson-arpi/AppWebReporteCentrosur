@@ -31,18 +31,18 @@ def show_page():
                             st.write(existing_data)
                     #Verificación de que se carguen nuevos datos
                     if new_data.empty:
-                        st.warning("No se han encontrado datos nuevos para agregar.")
+                        st.warning("No se han encontrado datos nuevos para agregar.", icon="⚠️")
                     else:
                         with st.expander("Registros que fueron agregados"):
                             st.write(new_data)
                         load_data(new_data) 
-                        st.success(f"Se han agregado {new_data.shape[0]} entradas a la base de datos.")
+                        st.success(f"Se han agregado {new_data.shape[0]} entradas a la base de datos.", icon="✅")
 
                     df = get_data_by_specific_dates(unique_days.astype(str))
                     process_data_for_report(df)
 
                 except Exception as e:
-                    st.error(f"Error al cargar los datos: {e}")
+                    st.error(f"Error al cargar los datos: {e}", icon="🚨")
             
         except Exception as e:
             st.write("Error en main: " + str(e))

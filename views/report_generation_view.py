@@ -22,7 +22,7 @@ def show_page():
 
     # Comprobar si el rango de fechas es válido
     if end_date < start_date:
-        st.error("La fecha de fin debe ser mayor o igual a la fecha de inicio.")
+        st.error("La fecha de fin debe ser mayor o igual a la fecha de inicio.", icon="🚨")
 
     # Crear el botón para generar el reporte
     if st.button("Generar"):
