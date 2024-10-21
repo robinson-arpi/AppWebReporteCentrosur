@@ -2,4 +2,6 @@ __pycache__/
 .streamlit/secrets.toml
 /mysql_data/
 /reports/
-
+.vscode
+# Ignorar archivos temporales de LibreOffice/Excel
+.~lock.*
