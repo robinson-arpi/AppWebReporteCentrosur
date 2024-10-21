@@ -1,5 +1,4 @@
 import pandas as pd
-import re
 
 # Crear un diccionario para asignar nombres de columnas
 cells_to_read = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W']
@@ -30,11 +29,15 @@ column_names = {
 
 def clean_cell(cell):
     """Función para limpiar caracteres no válidos de una celda."""
-    if isinstance(cell, str):
-        return cell.replace('\n', ' ').replace('\r', ' ').strip()
-    return cell
+    try:
+        if isinstance(cell, str):
+            return cell.replace('\n', ' ').replace('\r', ' ').strip()
+        return cell
+    except Exception as e:
+            raise Exception(f"Error (clean_cell): {e}")
 
-def read_excel_to_df(input_path):
+
+def process_data(input_path):
     """Lee un archivo Excel y lo convierte en un DataFrame, limpiando datos en el proceso."""
     try:
         all_sheets = pd.read_excel(input_path, sheet_name=None, usecols=limits_to_read, skiprows=0)
@@ -67,16 +70,6 @@ def read_excel_to_df(input_path):
             # Agregar el DataFrame limpio al diccionario
             if not df.empty:
                 sheet_dfs[sheet_name] = df
-
         return sheet_dfs
-    except ValueError as e:
-        print(f'Error (faltan columnas en su archivo): {e}')
-        return None
-    
     except Exception as e:
-        print(f'Error al leer el archivo: {e}')
-        return None
-
-def process_data(input_file):
-    sheet_dfs = read_excel_to_df(input_file)
-    return sheet_dfs
+        raise Exception(f"Error (process_data): {e}")
