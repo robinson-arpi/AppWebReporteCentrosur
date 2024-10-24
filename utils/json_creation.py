@@ -29,6 +29,9 @@ def get_df_as_json(sheet_dfs):
             df['numero_sheet'] = index  # Número de la hoja
             df['nombre_sheet'] = sheet_name.strip()  # Eliminar espacios en blanco
 
+            # Agregar una columna numero_fila con el índice de fila (empezando desde 1)
+            df['numero_fila'] = df.index + 2
+
             # Convertir el DataFrame a un diccionario y agregarlo directamente a all_data
             all_data.extend(df.to_dict(orient='records'))  # Agregar los registros
 
